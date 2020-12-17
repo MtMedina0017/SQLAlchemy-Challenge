@@ -1,18 +1,18 @@
 import numpy as np
-
+import datetime as dt
 import sqlalchemy
 from sqlalchemy.ext.automap import automap_base
 from sqlalchemy.orm import Session
 from sqlalchemy import create_engine, func
 
 from flask import Flask, jsonify
-from datetime import datetime as dt
 
 
 #################################################
 # Database Setup
 #################################################
-engine = create_engine("sqlite:///hawaii.sqlite")
+engine = create_engine("sqlite:///hawaii.sqlite", connect_args={'check_same_thread': False})
+
 
 # reflect an existing database into a new model
 Base = automap_base()
@@ -53,12 +53,10 @@ def welcome():
 @app.route("/api/v1.0/precipitation")
 def precipitation():
         # Calculate the Date 1 Year Ago from the Last Data Point in the Database
-        # dt.date(2017,8,23) - dt.timedelta(days=365)
         
         prcp_data = session.query(Measurement.date, Measurement.prcp).\
                 filter(Measurement.date >= dt.datetime(2016,8,23))
-                # order_by(Measurement.date).all()
-        # Convert List of Tuples Into a Dictionary
+
         prcp_list = dict(prcp_data)
         # Return JSON Representation of Dictionary
         return jsonify(prcp_list)
@@ -68,7 +66,7 @@ def precipitation():
 def stations():
         # Return a JSON List of Stations From the Dataset
         stations_data = session.query(Station.station).all()
-        # Convert List of Tuples Into Normal List
+        
         station_list = list(stations_data)
         # Return JSON List of Stations from the Dataset
         return jsonify(station_list)
@@ -77,15 +75,16 @@ def stations():
 @app.route("/api/v1.0/tobs")
 def tobs():
         # Query for the Dates and Temperature Observations from a Year from the Last Data Point
-        one_year_ago = dt.date(2017,8,23) - dt.timedelta(days=365)
+        time_frame = dt.date(2017,8,23) - dt.timedelta(days=365)
+
+        print(time_frame)
         # Design a Query to Retrieve the Last 12 Months of Precipitation Data Selecting Only the `date` and `prcp` Values
         tobs_data = session.query(Measurement.date, Measurement.tobs).\
-                filter(Measurement.date >= one_year_ago)
-                # order_by(Measurement.date).all()
-        # Convert List of Tuples Into Normal List
-        tobs_data_list = list(tobs_data)
+                filter(Measurement.date >= time_frame)
+        
+        tobs_list = list(tobs_data)
         # Return JSON List of Temperature Observations (tobs) for the Previous Year
-        return jsonify(tobs_data_list)
+        return jsonify(tobs_list)
 
 # Start Day Route
 @app.route("/api/v1.0/<start>")
@@ -93,23 +92,22 @@ def start_day(start):
         start_day = session.query(Measurement.date, func.min(Measurement.tobs), func.avg(Measurement.tobs), func.max(Measurement.tobs)).\
                 filter(Measurement.date >= start).\
                 group_by(Measurement.date).all()
-        # Convert List of Tuples Into Normal List
-        start_day_list = list(start_day)
+        
+        start_list = list(start_day)
         # Return JSON List of Min Temp, Avg Temp and Max Temp for a Given Start Range
-        return jsonify(start_day_list)
+        return jsonify(start_list)
 
 # Start-End Day Route
 @app.route("/api/v1.0/<start>/<end>")
 def start_end_day(start, end):
         start_end_day = session.query(Measurement.date, func.min(Measurement.tobs), func.avg(Measurement.tobs), func.max(Measurement.tobs)).\
                 filter(Measurement.date >= start).\
-                filter(Measurement.date <= end)
-                # group_by(Measurement.date).all()
-        # Convert List of Tuples Into Normal List
-        start_end_day_list = list(start_end_day)
-        # Return JSON List of Min Temp, Avg Temp and Max Temp for a Given Start-End Range
-        return jsonify(start_end_day_list)
+                filter(Measurement.date <= end).\
+                group_by(Measurement.date).all()
 
-# Define Main Behavior
+        start_end_list = list(start_end_day)
+        # Return JSON List of Min Temp, Avg Temp and Max Temp for a Given Start-End Range
+        return jsonify(start_end_list)
+
 if __name__ == '__main__':
     app.run(debug=True)
